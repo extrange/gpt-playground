@@ -12,7 +12,7 @@ def infer(text):
     prompt_length = len(tokenizer.decode(input_ids[0], skip_special_tokens=True))
     gen_tokens = model.generate(input_ids,
                                 top_p=0.9,
-                                temperature=1,
+                                temperature=0.8,
                                 max_length=prompt_length + 300,
                                 do_sample=True)
 
