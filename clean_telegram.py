@@ -1,3 +1,5 @@
+"""Prepare training data from telegram chats"""
+
 import json
 from pathlib import Path
 import csv

@@ -3,3 +3,5 @@ train.txt
 validation.csv
 validation.txt
 result.json
+.env
+db.json
