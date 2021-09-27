@@ -2,9 +2,8 @@ import json
 import logging
 import queue
 import threading
-import time
-import requests
 
+import requests
 from dotenv import dotenv_values
 from telegram.ext import CommandHandler, MessageHandler, Filters
 from telegram.ext import Updater
@@ -105,31 +104,35 @@ class Bot:
     def consume_api_queue(cls):
         """Retrieve chat history for a username, and prepare a call to the API"""
         while True:
-            username, chat_id = cls.api_queue.get()
-            other_user_modelname = mapping[get_other_user(username)]
+            try:
+                username, chat_id = cls.api_queue.get()
+                other_user_modelname = mapping[get_other_user(username)]
 
-            # Show 'typing...' status
-            updater.bot.send_chat_action(chat_id=chat_id, action='typing')
+                # Show 'typing...' status
+                updater.bot.send_chat_action(chat_id=chat_id, action='typing')
 
-            # Retrieve chat history, sorted chronologically
-            chat_history = sorted(db.search(Query().username == username), key=lambda x: x['timestamp'])
+                # Retrieve chat history, sorted chronologically
+                chat_history = sorted(db.search(Query().username == username), key=lambda x: x['timestamp'])
 
-            # Format the history and send to API
-            formatted_chat_history = format_chat_history(chat_history)
-            time, generated_messages = cls.query_api(formatted_chat_history, target_username=username)
-            logging.info(f'Generated text for {username} took {time:.2f}s: {generated_messages}')
+                # Format the history and send to API
+                formatted_chat_history = format_chat_history(chat_history)
+                time, generated_messages = cls.query_api(formatted_chat_history, target_username=username)
+                logging.info(f'Generated text for {username} took {time:.2f}s: {generated_messages}')
 
-            # Reply and save history to DB
-            for msg in generated_messages:
-                sent_message = updater.bot.send_message(chat_id=chat_id, text=msg)
-                sent_timestamp = sent_message.date.timestamp()
-                db.insert({'username': username,
-                           'from_user_modelname': other_user_modelname,
-                           'timestamp': sent_timestamp,
-                           'message': sent_message.text})
+                # Reply and save history to DB
+                for msg in generated_messages:
+                    sent_message = updater.bot.send_message(chat_id=chat_id, text=msg)
+                    sent_timestamp = sent_message.date.timestamp()
+                    db.insert({'username': username,
+                               'from_user_modelname': other_user_modelname,
+                               'timestamp': sent_timestamp,
+                               'message': sent_message.text})
+
+            except Exception as e:
+                logging.error(f'Exception: {e}')
 
     @classmethod
-    def query_api(cls, chat_history, target_username, input_max_length=1200):
+    def query_api(cls, chat_history, target_username, input_max_length=800):
         """
         Takes `input_max_length` characters, adds `username` and queries the endpoint.
         @:param target_username: the username for which to generate text for
@@ -141,12 +144,14 @@ class Bot:
         cut_history += f'\n\n{target_username}: '
 
         # Get response from api
-        response = cls.session.post(f'http://{server_ip}/', json={'text': cut_history}).json()
+        response = cls.session.post(f'http://{server_ip}:5555/', json={'text': cut_history}).json()
 
         # Cutoff model output when username no longer matches target_username
-        response.generated_text
+        generated_text = response['generated']
+        logging.info(f'Generated text:\n{generated_text}')
+        time_taken = response['time']
 
-        return response['time'], ['First', 'Second', 'Third']
+        return time_taken, ['First', 'Second', 'Third']
 
     @classmethod
     def start(cls):
