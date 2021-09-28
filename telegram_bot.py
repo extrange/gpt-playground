@@ -72,7 +72,7 @@ def echo(update, context):
 
 class Bot:
     thread = {}
-    debounce_interval = 3  # seconds
+    debounce_interval = 5  # seconds
     last_message_time = {}
     api_queue = queue.Queue()
     session = requests.Session()
@@ -142,11 +142,12 @@ class Bot:
         cut_history = chat_history[-input_max_length:]
 
         # Append the model username of OTHER target_username as prompt for model
-        cut_history += f'\n\n{target_username}: '
+        cut_history += f'\n\n{target_username}:'  # Trailing spaces mess up the model
 
         # Get response from api and extract responses
         response = cls.session.post(f'http://{server_ip}:5555/', json={'text': cut_history}).json()
         generated_text = response['generated']
+        logging.info(f'Generated text:\n{generated_text}')
         generated_responses = cls.extract_responses(generated_text, target_username)
 
         logging.info(f'Original text:\n{response["original"]}')
@@ -164,7 +165,7 @@ class Bot:
         candidate_text = None
         responses = []
 
-        for match in re.finditer('^(.*?):(?!//|\\)|>).*$', text, re.MULTILINE):
+        for match in re.finditer('^(.*?): .*$', text, re.MULTILINE):
             match_str = text[match.start(1):match.end(1)]
             if match_str != target_username:
                 candidate_text = text[:match.start(1)].strip()
