@@ -3,6 +3,7 @@ import logging
 import queue
 import re
 import threading
+from urllib3.exceptions import HTTPError
 
 import requests
 from dotenv import dotenv_values
@@ -75,7 +76,6 @@ class Bot:
     debounce_interval = 5  # seconds
     last_message_time = {}
     api_queue = queue.Queue()
-    session = requests.Session()
 
     @classmethod
     def add_username_to_queue(cls, username, chat_id):
@@ -110,7 +110,11 @@ class Bot:
                 other_user_modelname = mapping[get_other_user(username)]
 
                 # Show 'typing...' status
-                updater.bot.send_chat_action(chat_id=chat_id, action='typing')
+                # Weird error after ~10mins: Exception: urllib3 HTTPError ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+                try:
+                    updater.bot.send_chat_action(chat_id=chat_id, action='typing')
+                except Exception as e:
+                    logging.error(f'HTTP Error while sending typing status: {e}')
 
                 # Retrieve chat history, sorted chronologically
                 chat_history = sorted(db.search(Query().username == username), key=lambda x: x['timestamp'])
@@ -144,14 +148,19 @@ class Bot:
         # Append the model username of OTHER target_username as prompt for model
         cut_history += f'\n\n{target_username}:'  # Trailing spaces mess up the model
 
-        # Get response from api and extract responses
-        response = cls.session.post(f'http://{server_ip}:5555/', json={'text': cut_history}).json()
-        generated_text = response['generated']
-        logging.info(f'Generated text:\n{generated_text}')
-        generated_responses = cls.extract_responses(generated_text, target_username)
+        # Get response from api and extract responses (try up to 2 times)
+        attempts = 0
+        response = None
+        while attempts < 2:
+            try:
+                response = requests.post(f'http://{server_ip}:5555/', json={'text': cut_history}).json()
+                break
+            except Exception as e:
+                logging.error(f'HTTP Error from API: {e}')
+                attempts += 1
 
-        logging.info(f'Original text:\n{response["original"]}')
-        logging.info(f'Generated text:\n{generated_text}')
+        generated_text = response['generated']
+        generated_responses = cls.extract_responses(generated_text, target_username)
         time_taken = response['time']
 
         return time_taken, generated_responses
