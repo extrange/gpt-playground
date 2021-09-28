@@ -36,13 +36,16 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-Environment="PATH=/usr/local/cuda/bin:/opt/conda/bin:/opt/conda/condabin:/usr/local/bin:/usr/bin:
+Environment="PATH=/usr/local/cuda/bin:/opt/conda/bin:/opt/conda/condabin:/usr/local/bin:/usr/bin:"
 ExecStart=/opt/conda/bin/jupyter notebook --no-browser --ip=0.0.0.0 --port=5000
 User=<USERNAME>
 Group=<USERNAME>
 WorkingDirectory=/home/<USERNAME>/
 Restart=always
 RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 Run:

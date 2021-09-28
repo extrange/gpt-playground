@@ -1,6 +1,7 @@
 import json
 import logging
 import queue
+import re
 import threading
 
 import requests
@@ -27,9 +28,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 db = TinyDB('db.json')
 
 
-def get_other_user(model_username):
+def get_other_user(username):
     for k in mapping.keys():
-        if model_username != k:
+        if username != k:
             return k
         continue
 
@@ -116,7 +117,7 @@ class Bot:
 
                 # Format the history and send to API
                 formatted_chat_history = format_chat_history(chat_history)
-                time, generated_messages = cls.query_api(formatted_chat_history, target_username=username)
+                time, generated_messages = cls.query_api(formatted_chat_history, target_username=mapping[get_other_user(username)])
                 logging.info(f'Generated text for {username} took {time:.2f}s: {generated_messages}')
 
                 # Reply and save history to DB
@@ -135,23 +136,44 @@ class Bot:
     def query_api(cls, chat_history, target_username, input_max_length=800):
         """
         Takes `input_max_length` characters, adds `username` and queries the endpoint.
-        @:param target_username: the username for which to generate text for
+        @:param target_username: the username for which to generate text as
         :return: Extracts only responses with a different username and returns as a list
         """
         cut_history = chat_history[-input_max_length:]
 
-        # Append target_username as prompt for model
+        # Append the model username of OTHER target_username as prompt for model
         cut_history += f'\n\n{target_username}: '
 
-        # Get response from api
+        # Get response from api and extract responses
         response = cls.session.post(f'http://{server_ip}:5555/', json={'text': cut_history}).json()
-
-        # Cutoff model output when username no longer matches target_username
         generated_text = response['generated']
+        generated_responses = cls.extract_responses(generated_text, target_username)
+
+        logging.info(f'Original text:\n{response["original"]}')
         logging.info(f'Generated text:\n{generated_text}')
         time_taken = response['time']
 
-        return time_taken, ['First', 'Second', 'Third']
+        return time_taken, generated_responses
+
+    @classmethod
+    def extract_responses(cls, text, target_username):
+        """
+        Extract only the `target_username` responses from a given text sample
+        :return: list of responses for `target_username`
+        """
+        candidate_text = None
+        responses = []
+
+        for match in re.finditer('^(.*?):(?!//|\\)|>).*$', text, re.MULTILINE):
+            match_str = text[match.start(1):match.end(1)]
+            if match_str != target_username:
+                candidate_text = text[:match.start(1)].strip()
+                break
+
+        # Split candidate_text
+        [responses.append(x.strip()) for x in re.split(f'\n{target_username}: ', candidate_text)]
+
+        return responses
 
     @classmethod
     def start(cls):
