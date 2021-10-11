@@ -3,7 +3,6 @@ import logging
 import queue
 import re
 import threading
-from urllib3.exceptions import HTTPError
 
 import requests
 from dotenv import dotenv_values
@@ -73,7 +72,7 @@ def echo(update, context):
 
 class Bot:
     thread = {}
-    debounce_interval = 5  # seconds
+    debounce_interval = 0  # seconds
     last_message_time = {}
     api_queue = queue.Queue()
 
@@ -105,8 +104,8 @@ class Bot:
     def consume_api_queue(cls):
         """Retrieve chat history for a username, and prepare a call to the API"""
         while True:
+            username, chat_id = cls.api_queue.get()
             try:
-                username, chat_id = cls.api_queue.get()
                 other_user_modelname = mapping[get_other_user(username)]
 
                 # Show 'typing...' status
@@ -121,7 +120,8 @@ class Bot:
 
                 # Format the history and send to API
                 formatted_chat_history = format_chat_history(chat_history)
-                time, generated_messages = cls.query_api(formatted_chat_history, target_username=mapping[get_other_user(username)])
+                time, generated_messages = cls.query_api(formatted_chat_history,
+                                                         target_username=mapping[get_other_user(username)])
                 logging.info(f'Generated text for {username} took {time:.2f}s: {generated_messages}')
 
                 # Reply and save history to DB
@@ -134,10 +134,12 @@ class Bot:
                                'message': sent_message.text})
 
             except Exception as e:
+                updater.bot.send_message(chat_id=chat_id,
+                                         text='Oops, encountered an error - try resending your message?')
                 logging.error(f'Exception: {e}')
 
     @classmethod
-    def query_api(cls, chat_history, target_username, input_max_length=800):
+    def query_api(cls, chat_history, target_username, input_max_length=600):
         """
         Takes `input_max_length` characters, adds `username` and queries the endpoint.
         @:param target_username: the username for which to generate text as

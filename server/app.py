@@ -1,7 +1,9 @@
 from argparse import ArgumentParser
-from inference import infer_deepspeed
+
 from flask import Flask
 from flask import request
+
+from inference import infer_deepspeed
 
 app = Flask(__name__)
 

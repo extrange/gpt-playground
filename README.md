@@ -6,6 +6,8 @@
 - Inference without `deepspeed` takes 7.3GB VRAM, 13.44s for ~300 tokens
 - The script `clean_telegram.py` is provided to process single user telegram chats into trainable material.
 
+Also included are a Telegram client, as well as server inference running on Flask.
+
 ## 1. (Optional) Setup VM with GPUs in Google Compute Engine
 
 This can be done using the Google Cloud Console. 
