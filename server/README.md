@@ -2,7 +2,9 @@
 
 To be run on the GCloud GPU instance.
 
-Start with `flask run --host=0.0.0.0`.
+**Note: The folder containing the GPT2 model should be in this folder (`server`)  as `chat-model`.**
+
+Start with `python app.py`.
 
 ## Sample `systemctl` startup script:
 
@@ -23,7 +25,7 @@ Environment="PATH=/usr/local/cuda/bin:/opt/conda/bin:/opt/conda/condabin:/usr/lo
 ExecStart=/opt/conda/bin/python app.py
 User=<USERNAME>
 Group=<USERNAME>
-WorkingDirectory=/home/<USERNAME>
+WorkingDirectory=/home/<USERNAME>/gpt-playground/server/
 
 [Install]
 WantedBy=multi-user.target

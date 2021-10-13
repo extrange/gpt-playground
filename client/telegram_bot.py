@@ -10,10 +10,17 @@ from telegram.ext import CommandHandler, MessageHandler, Filters
 from telegram.ext import Updater
 from telegram.message import Message
 from tinydb import TinyDB, Query
+from pathlib import Path
 
-config = dotenv_values(".env")
+script_path = Path(__file__)
+config = dotenv_values(script_path.parent / '.env')
 token = config['BOT_API_TOKEN']
 server_ip = config['SERVER_IP']
+
+# Setup tinydb store
+db = TinyDB(script_path.parent / 'db.json')
+
+# TODO Make requests cancelleable when new ones come in
 
 # Maps usernames to those the model was trained on
 mapping: dict = json.loads(config['USERNAME_MAPPING'])
@@ -23,10 +30,6 @@ dispatcher = updater.dispatcher
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
-# Setup tinydb store
-db = TinyDB('db.json')
-
 
 def get_other_user(username):
     for k in mapping.keys():
@@ -176,13 +179,18 @@ class Bot:
         candidate_text = None
         responses = []
 
+        # Cut off text when username is different from target username
         for match in re.finditer('^(.*?): .*$', text, re.MULTILINE):
             match_str = text[match.start(1):match.end(1)]
             if match_str != target_username:
                 candidate_text = text[:match.start(1)].strip()
                 break
 
-        # Split candidate_text
+        # If text was not cutoff, the entire chunk is valid output
+        if candidate_text is None:
+            candidate_text = text
+
+        # Split candidate_text by username
         [responses.append(x.strip()) for x in re.split(f'\n{target_username}: ', candidate_text)]
 
         return responses
@@ -192,12 +200,12 @@ class Bot:
         api_thread = threading.Thread(target=cls.consume_api_queue, daemon=True)
         api_thread.start()
 
+if __name__ == '__main__':
+    echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
+    start_handler = CommandHandler('start', start)
 
-echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
-start_handler = CommandHandler('start', start)
+    dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(echo_handler)
 
-dispatcher.add_handler(start_handler)
-dispatcher.add_handler(echo_handler)
-
-Bot.start()
-updater.start_polling()
+    Bot.start()
+    updater.start_polling()
