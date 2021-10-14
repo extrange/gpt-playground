@@ -142,7 +142,7 @@ class Bot:
                 logging.error(f'Exception: {e}')
 
     @classmethod
-    def query_api(cls, chat_history, target_username, input_max_length=600):
+    def query_api(cls, chat_history, target_username, input_max_length=400, tokens_to_generate=140):
         """
         Takes `input_max_length` characters, adds `username` and queries the endpoint.
         @:param target_username: the username for which to generate text as
@@ -158,7 +158,7 @@ class Bot:
         response = None
         while attempts < 2:
             try:
-                response = requests.post(f'http://{server_ip}:5555/', json={'text': cut_history}).json()
+                response = requests.post(f'http://{server_ip}:5555/', json={'text': cut_history, 'tokens_to_generate': tokens_to_generate}).json()
                 break
             except Exception as e:
                 logging.error(f'HTTP Error from API: {e}')

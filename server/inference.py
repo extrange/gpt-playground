@@ -13,19 +13,19 @@ tokenizer.pad_token = tokenizer.eos_token
 deepspeed.init_inference(model, mp_size=1, dtype=torch.half, replace_method='auto')
 
 
-def infer_deepspeed(text, tokens_to_generate=40):
+def infer_deepspeed(text, tokens_to_generate):
     start_time = time.time()
-    input_ids = tokenizer(text, padding=True, return_tensors='pt').to('cuda:0').input_ids
-    prompt_length = len(tokenizer.decode(input_ids[0], skip_special_tokens=True))
-    gen_tokens = model.generate(input_ids,
+    model_input = tokenizer(text, padding=True, return_tensors='pt').to('cuda:0').input_ids
+    prompt_length = len(tokenizer.decode(model_input[0], skip_special_tokens=True))
+
+    gen_tokens = model.generate(model_input,
                                 top_p=0.9,
                                 temperature=0.9,
-                                max_length=prompt_length + tokens_to_generate,
+                                max_length=len(model_input[0]) + tokens_to_generate,
                                 do_sample=True,
                                 use_cache=True)  # Without this you get a dimension error
 
     gen_text = tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)[0][prompt_length:]
-
     return {'time': time.time() - start_time,
             'original': text,
             'generated': gen_text}

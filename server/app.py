@@ -12,8 +12,9 @@ app = Flask(__name__)
 def run_inference():
     json = request.get_json(force=True)
     text = json['text']
+    tokens_to_generate = json.get('tokens_to_generate') or 40
 
-    return infer_deepspeed(text)
+    return infer_deepspeed(text, tokens_to_generate=tokens_to_generate)
 
 
 if __name__ == '__main__':
