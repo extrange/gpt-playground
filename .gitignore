@@ -5,3 +5,6 @@ validation.txt
 result.json
 .env
 db.json
+
+__pycache__
+*.pyc
