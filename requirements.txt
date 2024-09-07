@@ -1,4 +1,4 @@
-datasets==1.12.1
+datasets==1.18.4
 deepspeed==0.5.3
 flask
 python-dotenv
