@@ -1,5 +1,5 @@
 datasets==1.12.1
-deepspeed==0.5.3
+deepspeed==0.15.1
 flask
 python-dotenv
 python-telegram-bot
